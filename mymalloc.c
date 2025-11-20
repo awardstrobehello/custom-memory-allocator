@@ -7,11 +7,9 @@
 
 #include "mymalloc.h"
 
-////////////////////////////////////////////////////////////
 #define memorySIZE 4096
 static char memory[memorySIZE];
 
-////////////////////////////////////////////////////////////
 
 // Prints it - for testing
 void printStuff(){
@@ -29,15 +27,10 @@ void printStuff(){
 }
 
 
-////////////////////////////////////////////////////////////
+// | r | size | m | m | m | ... |
+// r = reserved marker. region is malloced
+// s = size of array
 
-
-// Malloc is an array.
-
-// r will be a reserved marker showing that this region is malloced
-// s will be a number, standing for the size of the array
-    // what a malloced part of the array will look like -> | r | size of the array | m | m | m | ... |
-// 0 for empty
     // untouched party of array -> | 0 | 0 | 0 | ... |
 // f for free region
     // freed parts of array -> | f | f | f | ... |
@@ -48,29 +41,27 @@ void coallesce(void *ptr){
 
     int tempSize;
 
-    //coallesces
     while (i < memorySIZE){
             int q = memory[i + 1];
             int d = memory[i + 2];
         switch (memory[i]){
-        // spot has taken memory array, jumps to next taken or open slot.
             case 'r': 
-                tempSize = (q * 255) + d;
+                tempSize = (q * 256) + d;
                 i = i + tempSize + 3;
                 continue;        
         // spot has freed memory array. check size of it
             case 'f': 
-                tempSize = (q * 255) + d;
+                tempSize = (q * 256) + d;
                 //checks to see if next one is freed as well.
                 if ((memory[i + tempSize + 3]) == 'f'){
                     //the second freed block size
                     q = memory[i + tempSize + 4];
                     d = memory[i + tempSize + 5];
-                    int willAdd = (q * 255) + d;
+                    int willAdd = (q * 256) + d;
                     tempSize = tempSize + willAdd + 3;
                     //updating the size of f
-                    memory[i + 1] = (tempSize / 255);
-                    memory[i + 2] = (tempSize % 255);
+                    memory[i + 1] = (tempSize / 256);
+                    memory[i + 2] = (tempSize % 256);
 
                     // making the next block size indicator f
                     continue;
@@ -87,8 +78,8 @@ void coallesce(void *ptr){
 void *mymalloc(size_t size, char *file, int line){
     int i = 0;
     int tempSize;
-// divide size by 255 into first slot
-// modulo size by 255 into second slot
+    // divide size by 256 into first slot
+    // modulo size by 256 into second slot
 
     //goes until it finds an open space.
     while (i < memorySIZE){
@@ -97,44 +88,54 @@ void *mymalloc(size_t size, char *file, int line){
         switch (memory[i]){
         // spot has taken memory array, jumps to next taken or open slot.
             case 'r': 
-                tempSize = (q * 255) + d;
+                tempSize = (q * 256) + d;
                 i = i + tempSize + 3;
                 continue;
         
         // spot has freed memory array. check size of it
             case 'f': 
-                tempSize = (q * 255) + d;
+                tempSize = (q * 256) + d;
                 // not enough space
                 if (size > tempSize){
                     i = i + tempSize + 3;
                     continue;
                 } else {
-                    memory[i] = 'r';
-                    int newFreeSize = tempSize - size;
-                    memory[i + 1] = (size / 255);
-                    memory[i + 2] = (size % 255);
-                    i = i + 3;
-                    while (i < size){
-                        memory[i] = 'j';
-                        i++;
+
+                    int remainingSize = tempSize - size;
+                    int anchor = i + 3;
+
+                    if (remainingSize < 4){
+                        memory[i] = 'r';
+                        return &memory[anchor];
+                    } else {
+                        memory[i] = 'r';
+                        int newFreeSize = remainingSize - 3;
+                        memory[i + 1] = (size / 256);
+                        memory[i + 2] = (size % 256);
+
+                        for (int j = 0; j < size; j++){
+                            memory[anchor + j] = 'm';
+                        }
+
+                        memory[anchor + size] = 'f';
+                        memory [anchor + size + 1] = (newFreeSize / 256);
+                        memory [anchor + size + 2] = (newFreeSize % 256);
+                        return &memory[anchor];
+
                     }
-                    memory[i + 1] = (newFreeSize / 255);
-                    memory[i + 2] = (newFreeSize % 255);
                     // printStuff();
-                    return &memory[i];
-                    break;
                 }
             default:
                 if (i + size + 2 > memorySIZE){
                     printf("\n");
-                    puts("ERROR! Not enough space. ");
+                    puts("ERROR! Not enough space");
                     printf("File: %s, line: %d", file, line);
                     printf("\n");
                     return NULL;
                 }
                 memory[i] = 'r';
-                memory[i + 1] = (size / 255);
-                memory[i + 2] = (size % 255);
+                memory[i + 1] = (size / 256);
+                memory[i + 2] = (size % 256);
                 int j = 0;
                 int anchor = i + 3;
                 while (j < size){
@@ -147,7 +148,6 @@ void *mymalloc(size_t size, char *file, int line){
                 break;
         }
     }
-    //returns the first part of your block, m
 }
 
 //frees and coallsces all of it as well
@@ -156,7 +156,7 @@ void myfree(void *ptr, char *file, int line){
 
     int *d = ptr - 1;
     int *q = ptr - 2;
-    int size = (*q * 255) + *d;
+    int size = (*q * 256) + *d;
 
     switch (*mem){
         case 'r':

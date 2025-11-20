@@ -35,9 +35,9 @@ int main(int argc, char **argv){
         free(p);
         break;
 
-// 1. malloc() and immediately free() a 1-byte chunk, 120 times
+    // malloc() and immediately free() a 1-byte chunk
     case 4:
-        for (int j = 0; j < 50; j++){
+        for (int j = 0; j < 5000; j++){
             for (int i = 0; i < val; i++){
                 void *p = malloc(1);
                 free(p);
@@ -45,10 +45,10 @@ int main(int argc, char **argv){
         }
         break;
 
-// 2. Use malloc() to get 120 1-byte chunks, storing the pointers in an array, then use free() to
+    // Use malloc() to get 1-byte chunks, storing the pointers in an array, then use free() to
     // deallocate the chunks
     case 5:
-        for (int j = 0; j < 50; j++){
+        for (int j = 0; j < 1000; j++){
             for (int i = 0; i < val; i++){
                 arr[i] = malloc(1);
             }
@@ -58,7 +58,7 @@ int main(int argc, char **argv){
         }
         break;
 
-// 3. Randomly choose between
+    // Randomly choose between
     // • Allocating a 1-byte chunk and storing the pointer in an array
     // • Deallocating one of the chunks in the array (if any)
     // Repeat until you have called malloc() 120 times, then free all remaining allocated chunks
@@ -77,14 +77,10 @@ int main(int argc, char **argv){
                 arr2[freeNum] == NULL;
                 }
         }
-        // while (freeNum < mallocNum){
-        //     free(arr2[freeNum]);
-        //     freeNum++;
-        // }
         break;
             // 50/50 change of allocating and deallocating
 
-// 4. Two more stress tests
+    // Two more stress tests
     case 7:
         for (int i = 0; i < 50; i++){
             for (int j = 0; j < 15; j++){
@@ -109,6 +105,47 @@ int main(int argc, char **argv){
 	        free(p);
         }
         break;
+
+    // Coalescing verification
+    case 9:
+        printf("Coalescing\n");
+        p = malloc(100);
+        z = malloc(100);
+        v = malloc(100);
+        printf("Blocks created\n");
+        
+        free(p);
+        free(v);
+        free(z);
+        printf("Blocks freed\n");
+        
+        m = malloc(300);  // Should work
+        if (m == NULL) {
+            printf("Couldn't allocate\n");
+        } else {
+            printf("Success\n");
+            free(m);
+        }
+        break;
+
+    // Memory reuse
+    case 10:
+        printf("Memory Reuse\n");
+        p = malloc(50);
+        printf("Allocation at %p\n", p);
+        free(p);
+        
+        z = malloc(50);  // Should reuse the same space
+        printf("Allocation at %p\n", z);
+        
+        if (p == z) {
+            printf("Success. Memory reused at same address\n");
+        } else {
+            printf("Memory not reused\n");
+        }
+        free(z);
+        break;
+
     }
 
     double end = clock();
